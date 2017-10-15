@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css">
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+        #map { height: 800px;}
+        #ControlsContainer{
+            position: absolute;
+            z-index: 5000;
+            top:85px;
+            left: 20px;
+        }
+        #ForecastPrecipBtn{
+            background-color: darkslategrey;
+            color:oldlace;
+            border-radius: 10%;
+            min-height: 205px;
+            height: 205px;
+
+        }
+        #RainfallLegendContainer{
+            display: none;
+            position: absolute;
+            top: 120px;
+            left:20px;
+            z-index: 5000;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="ControlsContainer"><span id="ForecastPrecipBtn">How Wet Will My Bus Stop Be?</span></div>
+<div id="RainfallLegendContainer"><img src="resources/images/qpfRainfallLegend.gif"></div>
+</body>
+<script src="https://code.jquery.com/jquery-3.2.1.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"></script>
+<script src="https://unpkg.com/esri-leaflet@2.1.1/dist/esri-leaflet.js" integrity="sha512-ECQqaYZke9cSdqlFG08zSkudgrdF6I1d8ViSa7I3VIszJyVqw4ng1G8sehEXlumdMnFYfzY0tMgdQa4WCs9IUw==" crossorigin=""></script>
+<!--<script src="qpf24hr_day1_latest.js"></script>-->
+<script src="resources/js/Leaflet.MakiMarkers.js"></script>
+<script>
+    ($(document).ready(function () {
+        var geoJsonQPF_Day1;
+        var map = L.map("map").setView([30.25, -97.72], 11);
+        var esriTopoFocusLayer = L.esri.basemapLayer("Topographic", {hideLogo: "true"}).addTo(map);
+
+        function stopTimes(incomignStopId){
+            var jqxhrCountyDeclarations = $.ajax({
+                crossDomain: true,
+                url: 'http://localhost:10001/api/DataLookup/CapMetro/StopTimes/803/'+incomignStopId
+            }).done(function (data) {
+                        parseSpanTimes(data,incomignStopId)
+                    }
+            );
+            jqxhrCountyDeclarations.always(function () {
+                //console.log('second complete');  //uncomment to display functionality
+            });
+
+        }
+
+        function parseSpanTimes(incomingTimesSpan,incomingStopId){
+            console.log(incomingTimesSpan);
+            $('#'+incomingStopId).append('<br/>'+incomingTimesSpan);
+        }
+
+        var url = 'http://localhost:10001/api/DataLookup/CapMetro/803/S';
+
+        var jqxhrCountyDeclarations = $.ajax({
+            crossDomain: true,
+            url: url
+        }).done(function (data) {
+                    drawCapMetroPoints(data);
+                }
+        );
+        jqxhrCountyDeclarations.always(function () {
+            console.log('second complete');
+        });
+
+        function drawCapMetroPoints(incomingPoints){
+            var markers = [];
+            //console.log(incomingPoints);
+            $.each(incomingPoints,function(key, value){
+                //console.log(value.latLng);
+                var latLngIn = value.latLng;
+                var strAry = latLngIn.split(",");
+                var marker = new L.Marker(new L.latLng(strAry[0],strAry[1]), {
+                    icon: new L.MakiMarkers.icon({
+                        icon: "bus",
+                        color: "#cc00ff",
+                        size: "m"
+                    })
+                }).bindPopup("" +
+                        "<p style='background-color: #cccccc'><span style='font-weight:bold'>Stop Id </span>" + value.id +
+                        "<br/><span class='stopTimesRetrieval' style='font-weight:bold'>Click for Stop Times: <span style='color:red' id='"+value.id+"'>" + value.id +
+                        "</span></span><br/><span style='font-weight:bold'>Lat/Lng: </span>" + strAry[0] + ", " + strAry[1] + "</p>");
+
+                var tmpValId = '#' + value.id;
+                jQuery(document).on('click', tmpValId, function(event){
+                    //console.log(tmpValId);
+                    stopTimes(tmpValId.substr(1));
+                });
+                markers.push(marker);
+                map.addLayer(marker);
+                marker.on('click',function(){
+
+                })
+            });
+        }
+
+        function gatherForecastData(){
+            var jqxhrCountyDeclarations = $.ajax({
+                crossDomain: true,
+                url: 'http://localhost:10001/api/DataLookup/Forecast/'
+            }).done(function (data) {
+                        //var markers = [];
+                        //var jsonResult = data;
+                        drawForecastRain(data)
+                    }
+            );
+            jqxhrCountyDeclarations.always(function () {
+                console.log('qpf complete');
+            });
+        }
+
+        function drawForecastRain(qpfDay1Incoming){
+            console.log(qpfDay1Incoming);
+            geoJsonQPF_Day1 = L.geoJson(qpfDay1Incoming,
+                    {
+                        style: function(feature) {
+                            switch (feature.properties.qpf) {
+                                case 0.010000:
+                                        //console.log("I did make it here");
+                                    return {color: "#79FA00",fillOpacity:0.45,weight: 0.2};
+                                case 0.1: return {color: "#00CF00",fillOpacity:0.45,weight: 0.2};
+                                case 0.25: return {color: "#008C00",fillOpacity:0.45,weight: 0.2};
+                                case 0.5: return {color: "#114B8D",fillOpacity:0.45,weight: 0.2};
+                                case 0.75: return {color: "#1E90FF",fillOpacity:0.45,weight: 0.2};
+                                case 1: return {color: "#00B2EE",fillOpacity:0.45,weight: 0.2};
+                                case 1.25: return {color: "#00EEEE",fillOpacity:0.45,weight: 0.2};
+                                case 1.5: return {color: "#8967CC",fillOpacity:0.45,weight: 0.2};
+                                case 1.75: return {color: "#9133EE",fillOpacity:0.45,weight: 0.2};
+                                case 2: return {color: "#8B1E8B",fillOpacity:0.45,weight: 0.2};
+                                case 2.5: return {color: "#8A0F00",fillOpacity:0.45,weight: 0.2};
+                                case 3: return {color: "#CE1C00",fillOpacity:0.45,weight: 0.2};
+                                case 4: return {color: "#ED4000",fillOpacity:0.45,weight: 0.2};
+                                case 5: return {color: "#FF7F00",fillOpacity:0.45,weight: 0.2};
+                                case 7: return {color: "#CE8500",fillOpacity:0.45,weight: 0.2};
+                                case 10: return {color: "#FFD700",fillOpacity:0.45,weight: 0.2};
+                                case 15: return {color: "#FFFB00",fillOpacity:0.45,weight: 0.2};
+                                case 20: return {color: "#FFAEB8",fillOpacity:0.45,weight: 0.2};
+                                //case '723-127': return {color: "#ff0000"};
+                                default:
+                                    return {color: '#00008A'};
+                                    break;
+                            }
+                        }
+
+                    });
+            map.addLayer(geoJsonQPF_Day1);
+        }
+
+        $('#ForecastPrecipBtn').on('click',function(){
+            if(map.hasLayer(geoJsonQPF_Day1)){
+                map.removeLayer(geoJsonQPF_Day1);
+            } else {
+                gatherForecastData();
+            }
+            $('#RainfallLegendContainer').toggle();
+        });
+
+
+    }))
+</script>
+</html>
