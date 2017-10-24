@@ -41,7 +41,10 @@ module.exports = function(app,express,postgres) {
             next();
         });
     }
-
+    capMetroRouter.get('/DataLookup/Capmetro/',cors(), function(req,res,next) {
+       res.send('Please Enter a Route Number (ex:803) and Direction (ex:N or S or W or E) after the trailing slash(/), separated by slashes in the url to retrieve stops along route (ex: /803/N)');
+    });
+    
     capMetroRouter.get('/DataLookup/Capmetro/:route/:dir',cors(),queryCapMetro, function(req,res,next) {
        res.json(req.capRoutes);
     });
