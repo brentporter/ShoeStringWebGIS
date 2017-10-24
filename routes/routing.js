@@ -73,7 +73,7 @@ module.exports = function(app,express,postgres) {
     }
 
     function queryCapMetroUpcomingPickupTimes(req,res,next){
-        //https://www.capmetro.org/planner/s_service.asp?tool=NB&output=json&stopid=5880&&route=803
+        //example url - https://www.capmetro.org/planner/s_service.asp?tool=NB&output=json&stopid=5880&&route=803
         fetch('https://www.capmetro.org/planner/s_service.asp?tool=NB&output=json&stopid='+req.params.stopid+'&route='+req.params.route)
             .catch(function(err) {
                 //console.log(err);
@@ -82,8 +82,6 @@ module.exports = function(app,express,postgres) {
             .then(function(response) {
                 console.log(response);
                 return response.text();
-                //return res.json();
-                //return res.send(res);
             }).then(function(json){
                 var strDivTimesIdx = json.lastIndexOf("[PDF]")+39;
                 var strDivTimes = json.substring(strDivTimesIdx,json.lastIndexOf("</span>")+7);
