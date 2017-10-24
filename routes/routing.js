@@ -109,15 +109,12 @@ module.exports = function(app,express,postgres) {
     function queryCapMetro(req,res,next){
         fetch('https://www.capmetro.org/planner/s_routetrace.asp?route='+req.params.route+'&dir='+req.params.dir+'&stoptrace=B&opt=1&cmp=1')
             .catch(function(err) {
-             //console.log(err);
-             return res.send("Something");
+                return res.json({errors: "Something went wrong with the route stops query - please try again later"});
              })
             .then(function(response) {
                 return response.json();
-                //return res.json();
-                //return res.send(res);
+
             }).then(function(json){
-                //console.log(json);
                 req.capRoutes = json.stops;
                 next();
             });
@@ -129,13 +126,11 @@ module.exports = function(app,express,postgres) {
         fetch('https://www.capmetro.org/planner/s_service.asp?tool=NB&output=json&stopid='+req.params.stopid+'&route='+req.params.route)
             .catch(function(err) {
                 //console.log(err);
-                return res.send("Something");
+                return res.json({errors: "Something went wrong with the Bus Stop Upcoming Times query - please try again later"});
             })
             .then(function(response) {
-                console.log(response);
+                //console.log(response);
                 return response.text();
-                //return res.json();
-                //return res.send(res);
             }).then(function(json){
                 var strDivTimesIdx = json.lastIndexOf("[PDF]")+39;
                 var strDivTimes = json.substring(strDivTimesIdx,json.lastIndexOf("</span>")+7);
