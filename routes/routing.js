@@ -1,5 +1,9 @@
 /**
- * Created by brentporter on 10/12/17.
+ * Created by brentporter on 10/12/17
+ * Edited 10/14/17 by brentporter
+ * Edited 10/15/17 by brentporter
+ * Edited 10/18/17 by brentporter
+ * Edited 10/23/17 by brentporter
  */
 
 module.exports = function(app,express,postgres) {
@@ -8,7 +12,7 @@ module.exports = function(app,express,postgres) {
 
     var forecastRainRouter = express.Router();
     var capMetroRouter = express.Router();
-    
+
     var fetch = require('node-fetch');
 
     forecastRainRouter.get('/DataLookup/Forecast/',cors(),query_QPF_1Day,function(req,res,next){
@@ -41,17 +45,65 @@ module.exports = function(app,express,postgres) {
             next();
         });
     }
-    capMetroRouter.get('/DataLookup/Capmetro/',cors(), function(req,res,next) {
-       res.send('Please Enter a Route Number (ex:803) and Direction (ex:N or S or W or E) after the trailing slash(/), separated by slashes in the url to retrieve stops along route (ex: /803/N)');
-    });
-    
+
     capMetroRouter.get('/DataLookup/Capmetro/:route/:dir',cors(),queryCapMetro, function(req,res,next) {
        res.json(req.capRoutes);
     });
 
-    //queryCapMetroUpcomingPickupTimes
+    //query CapMetro Upcoming Pickup Times
     capMetroRouter.get('/DataLookup/Capmetro/StopTimes/:route/:stopid',cors(),queryCapMetroUpcomingPickupTimes, function(req,res,next) {
         res.json(req.stopTimes);
+    });
+
+    capMetroRouter.param('route', function (req, res, next, route) {
+        console.log("Testing on " + route);
+        if (isInt(route)) {
+            req.route = route;
+            next();
+        } else {
+            res.statusCode = 404;
+            return res.json({errors: ["Route not constructed correctly or not recognized - please use numbers only"]});
+        }
+
+
+    });
+
+    capMetroRouter.param('stopid', function (req, res, next, stopid) {
+        console.log("Testing on " + stopid);
+        if (isInt(stopid)) {
+            req.stopid = stopid;
+            next();
+        } else {
+            res.statusCode = 404;
+            return res.json({errors: ["Stop ID not constructed correctly or not recognized - please use numbers only"]});
+        }
+
+
+    });
+
+    capMetroRouter.param('dir', function (req, res, next, dir) {
+        console.log("Testing on " + dir);
+        switch(dir){
+            case 'N':
+                req.dir = dir;
+                next();
+                break;
+            case 'S':
+                req.dir = dir;
+                next();
+                break;
+            case 'W':
+                req.dir = dir;
+                next();
+                break;
+            case 'E':
+                req.dir = dir;
+                next();
+                break;
+            default:
+                res.statusCode = 404;
+                return res.json({errors: ["Direction Parameter not constructed correctly or not recognized - please use only N, S, W, or E"]});
+        }
     });
 
     function queryCapMetro(req,res,next){
@@ -73,7 +125,7 @@ module.exports = function(app,express,postgres) {
     }
 
     function queryCapMetroUpcomingPickupTimes(req,res,next){
-        //example url - https://www.capmetro.org/planner/s_service.asp?tool=NB&output=json&stopid=5880&&route=803
+        //https://www.capmetro.org/planner/s_service.asp?tool=NB&output=json&stopid=5880&&route=803
         fetch('https://www.capmetro.org/planner/s_service.asp?tool=NB&output=json&stopid='+req.params.stopid+'&route='+req.params.route)
             .catch(function(err) {
                 //console.log(err);
@@ -82,6 +134,8 @@ module.exports = function(app,express,postgres) {
             .then(function(response) {
                 console.log(response);
                 return response.text();
+                //return res.json();
+                //return res.send(res);
             }).then(function(json){
                 var strDivTimesIdx = json.lastIndexOf("[PDF]")+39;
                 var strDivTimes = json.substring(strDivTimesIdx,json.lastIndexOf("</span>")+7);
@@ -93,11 +147,16 @@ module.exports = function(app,express,postgres) {
             });
     }
 
-    
+
     app.use('/api', capMetroRouter);
     app.use('/api', forecastRainRouter);
-    
+
 
 };
+
+function isInt(value) {
+    return !isNaN(value) && (function(x) { return (x | 0) === x; })(parseFloat(value))
+}
+
 
 
