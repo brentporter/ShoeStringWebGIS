@@ -3,7 +3,7 @@
 <head lang="en">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css">
     <meta charset="UTF-8">
-    <title></title>
+    <title>Routes & Rain</title>
     <style>
         #map { height: 800px;}
         #ControlsContainer{
@@ -16,8 +16,8 @@
             background-color: darkslategrey;
             color:oldlace;
             border-radius: 10%;
-            min-height: 205px;
-            height: 205px;
+            /*min-height: 205px;
+            height: 205px;*/
 
         }
         #RainfallLegendContainer{
@@ -27,11 +27,28 @@
             left:20px;
             z-index: 5000;
         }
+        label{
+            background-color: darkslategrey;
+            color: oldlace;
+        }
+        #lblRouteNumberTxt{
+            margin-right: 12px;
+        }
+        #lblRouteDirectionTxt{
+            margin-right: 4px;
+        }
     </style>
 </head>
 <body>
 <div id="map"></div>
-<div id="ControlsContainer"><span id="ForecastPrecipBtn">How Wet Will My Bus Stop Be?</span></div>
+<div id="ControlsContainer"><button id="ForecastPrecipBtn">How Wet Will My Bus Stop Be?</button>
+    <br/>
+    <span id="RouteNumberAndDir">
+        <label id="lblRouteNumberTxt" for="RouteNumberTxt">Route Number</label><input id="RouteNumberTxt" type="text" value="Enter Route Here"><br/>
+        <label id="lblRouteDirectionTxt" for="RouteDirectionTxt">Route Direction</label><input id="RouteDirectionTxt" type="text" value="Enter Direction Here">
+        <button id="SubmitIt">Submit Route</button>
+    </span>
+</div>
 <div id="RainfallLegendContainer"><img src="resources/images/qpfRainfallLegend.gif"></div>
 </body>
 <script src="https://code.jquery.com/jquery-3.2.1.min.js" crossorigin="anonymous"></script>
@@ -41,47 +58,60 @@
 <script src="resources/js/Leaflet.MakiMarkers.js"></script>
 <script>
     ($(document).ready(function () {
+        var markers = [];
         var geoJsonQPF_Day1;
         var map = L.map("map").setView([30.25, -97.72], 11);
         var esriTopoFocusLayer = L.esri.basemapLayer("Topographic", {hideLogo: "true"}).addTo(map);
 
-        function stopTimes(incomignStopId){
+        function stopTimes(incomignStopId,incomingRoute){
             var jqxhrCountyDeclarations = $.ajax({
                 crossDomain: true,
-                url: 'http://localhost:10001/api/DataLookup/CapMetro/StopTimes/803/'+incomignStopId
+                url: 'http://localhost:10001/api/DataLookup/CapMetro/StopTimes/'+incomingRoute+'/'+incomignStopId
             }).done(function (data) {
                         parseSpanTimes(data,incomignStopId)
                     }
             );
             jqxhrCountyDeclarations.always(function () {
-                //console.log('second complete');  //uncomment to display functionality
+                //console.log('This will always fire - if it isn't commented out');  //uncomment to display functionality
             });
 
         }
+        
+        $('#SubmitIt').on('click',function(){
+            submitRoute();
+        });
+        
+        function submitRoute(){
+            var route = $('#RouteNumberTxt').val();
+            var dir = $('#RouteDirectionTxt').val();
+            var url = 'http://localhost:10001/api/DataLookup/CapMetro/'+route+'/' +dir;
+            var jqxhrCountyDeclarations = $.ajax({
+                crossDomain: true,
+                url: url
+            }).done(function (data) {
+                        drawCapMetroPoints(data,route);
+                    }
+            );
 
+            jqxhrCountyDeclarations.always(function () {
+                console.log('second complete');
+            });
+
+        }
+        
         function parseSpanTimes(incomingTimesSpan,incomingStopId){
             console.log(incomingTimesSpan);
             $('#'+incomingStopId).append('<br/>'+incomingTimesSpan);
         }
-
-        var url = 'http://localhost:10001/api/DataLookup/CapMetro/803/S';
-
-        var jqxhrCountyDeclarations = $.ajax({
-            crossDomain: true,
-            url: url
-        }).done(function (data) {
-                    drawCapMetroPoints(data);
+        
+        function drawCapMetroPoints(incomingPoints,incomingRoute){
+            if(markers.length > 0) {
+                for (var i = 0; i < markers.length; i++) {
+                    map.removeLayer(markers[i])
                 }
-        );
-        jqxhrCountyDeclarations.always(function () {
-            console.log('second complete');
-        });
-
-        function drawCapMetroPoints(incomingPoints){
-            var markers = [];
-            //console.log(incomingPoints);
+            }
+            markers = [];
             $.each(incomingPoints,function(key, value){
-                //console.log(value.latLng);
                 var latLngIn = value.latLng;
                 var strAry = latLngIn.split(",");
                 var marker = new L.Marker(new L.latLng(strAry[0],strAry[1]), {
@@ -97,15 +127,14 @@
 
                 var tmpValId = '#' + value.id;
                 jQuery(document).on('click', tmpValId, function(event){
-                    //console.log(tmpValId);
-                    stopTimes(tmpValId.substr(1));
+                    stopTimes(tmpValId.substr(1),incomingRoute);
                 });
                 markers.push(marker);
-                map.addLayer(marker);
-                marker.on('click',function(){
-
-                })
             });
+            for(var j=0;j<markers.length;j++) {
+                map.addLayer(markers[j]);
+            }
+
         }
 
         function gatherForecastData(){
@@ -129,9 +158,7 @@
                     {
                         style: function(feature) {
                             switch (feature.properties.qpf) {
-                                case 0.010000:
-                                        //console.log("I did make it here");
-                                    return {color: "#79FA00",fillOpacity:0.45,weight: 0.2};
+                                case 0.010000:return {color: "#79FA00",fillOpacity:0.45,weight: 0.2};
                                 case 0.1: return {color: "#00CF00",fillOpacity:0.45,weight: 0.2};
                                 case 0.25: return {color: "#008C00",fillOpacity:0.45,weight: 0.2};
                                 case 0.5: return {color: "#114B8D",fillOpacity:0.45,weight: 0.2};
@@ -149,7 +176,6 @@
                                 case 10: return {color: "#FFD700",fillOpacity:0.45,weight: 0.2};
                                 case 15: return {color: "#FFFB00",fillOpacity:0.45,weight: 0.2};
                                 case 20: return {color: "#FFAEB8",fillOpacity:0.45,weight: 0.2};
-                                //case '723-127': return {color: "#ff0000"};
                                 default:
                                     return {color: '#00008A'};
                                     break;
@@ -168,8 +194,6 @@
             }
             $('#RainfallLegendContainer').toggle();
         });
-
-
     }))
 </script>
 </html>
